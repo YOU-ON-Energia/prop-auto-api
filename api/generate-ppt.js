@@ -19,7 +19,8 @@ module.exports = async (req, res) => {
       inversores = "",
       baterias = "",
       faixaLabel = "",
-      dataProposta, // opcional
+      endereco = "",
+      dataProposta, 
     } = body || {};
 
     const replacements = {
@@ -27,6 +28,7 @@ module.exports = async (req, res) => {
       "{VALOR_CONTA}": String(valorContaFmt ?? ""),
       "{INVERSORES}": String(inversores ?? ""),
       "{BATERIAS}": String(baterias ?? ""),
+      "{ENDERECO}": String(endereco ?? ""),
       "{FAIXA}": String(faixaLabel ?? ""),
       "{DATA_PROPOSTA}": String(
         dataProposta || new Date().toLocaleDateString("pt-BR")
