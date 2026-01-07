@@ -11,6 +11,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@vercel/blob": "^2.0.0",
+    "dotenv": "^17.2.3",
     "jszip": "^3.10.1"
   }
 }
