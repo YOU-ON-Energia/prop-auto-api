@@ -1,20 +1,5 @@
 const JSZip = require("jszip");
 
-// ===== helpers =====
-function normalizeVendor(v) {
-  const raw = String(v || "").trim().toLowerCase();
-
-  if (raw === "matheuzinho" || raw === "mateuzinho" || raw === "mateusinho") return "mateus";
-  if (raw === "atílio" || raw === "attilio") return "atilio";
-  if (raw === "alex" || raw === "alê" || raw === "alê." || raw === "ale") return "ale";
-  if (raw === "peixe") return "peixe";
-
-  return raw
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function normalizeSolarFlag(v) {
   if (typeof v === "boolean") return v;
   const raw = String(v || "").trim().toLowerCase();
@@ -34,22 +19,25 @@ module.exports = async (req, res) => {
 
     const {
       temSolar,
-      vendedor,
 
       nomeCliente = "Cliente",
-      valorContaFmt = "",
       inversores = "",
       baterias = "",
-      faixaLabel = "",
+      energia_armazenavel = "",
+      potencia = "",
       endereco = "",
       dataProposta,
+      geracao = "",
+      economia = "",
+      unidade = "",
     } = body || {};
 
-    // ===== escolhe template =====
-    const vendorKey = normalizeVendor(vendedor);
+    // ===== escolhe template (somente 2) =====
     const solarFlag = normalizeSolarFlag(temSolar);
-    const suffix = solarFlag ? "com-solar" : "sem-solar";
-    const templateFile = `${vendorKey}-${suffix}.pptx`;
+    const templateFile = solarFlag
+    ? "YOUON_Template_Proposta_Comercial_02_ 2.pptx" // COM solar
+    : "YOUON_Template_Proposta_Comercial_01_ 1.pptx"; // SEM solar
+
 
     // ===== URL do Blob (ENV) =====
     const baseUrl = process.env.TEMPLATES_BASE_URL;
@@ -58,7 +46,9 @@ module.exports = async (req, res) => {
       return res.end("ENV TEMPLATES_BASE_URL não configurada na Vercel.");
     }
 
-    const templateUrl = `${baseUrl.replace(/\/+$/, "")}/${templateFile}`;
+    const templateUrl =
+    `${baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(templateFile)}`;
+
 
     // ===== baixa o template do Blob =====
     const response = await fetch(templateUrl);
@@ -66,8 +56,8 @@ module.exports = async (req, res) => {
       res.statusCode = 400;
       return res.end(
         `Template não encontrado no Blob: ${templateFile}\n` +
-        `URL: ${templateUrl}\n` +
-        `Verifique vendedor="${vendedor}" (-> "${vendorKey}") e temSolar="${temSolar}" (-> ${solarFlag}).`
+          `URL: ${templateUrl}\n` +
+          `temSolar="${temSolar}" (-> ${solarFlag})`
       );
     }
 
@@ -76,29 +66,28 @@ module.exports = async (req, res) => {
     // ===== replacements =====
     const replacements = {
       "{NOME_CLIENTE}": String(nomeCliente ?? "Cliente"),
-      "{VALOR_CONTA}": String(valorContaFmt ?? ""),
-      "{INVERSORES}": String(inversores ?? ""),
-      "{BATERIAS}": String(baterias ?? ""),
       "{ENDERECO}": String(endereco ?? ""),
-      "{FAIXA}": String(faixaLabel ?? ""),
       "{DATA_PROPOSTA}": String(dataProposta || new Date().toLocaleDateString("pt-BR")),
+      "{INVERSORES}": String(inversores ?? ""),
+      "{POTENCIA_INVER}": String(potencia ?? ""),
+      "{BATERIAS}": String(baterias ?? ""),
+      "{ENERGIA_ARMAZENAVEL}": String(energia_armazenavel ?? ""),
+      "{GERACAO}": String(geracao ?? ""),
+      "{ECONOMIA}": String(economia ?? ""),
+      "{UNIDADE}": String(unidade ?? ""),
     };
 
-    // Abre PPTX (zip)
     const zip = await JSZip.loadAsync(templateBuffer);
 
-    // Slides XML
     const slideFiles = Object.keys(zip.files).filter(
       (name) => name.startsWith("ppt/slides/slide") && name.endsWith(".xml")
     );
 
     for (const fileName of slideFiles) {
       let xml = await zip.files[fileName].async("string");
-
       for (const [key, value] of Object.entries(replacements)) {
         xml = xml.split(key).join(value);
       }
-
       zip.file(fileName, xml);
     }
 
@@ -108,7 +97,7 @@ module.exports = async (req, res) => {
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "-");
 
-    const filename = `Proposta-YOUON-${safeName}-${vendorKey}-${suffix}.pptx`;
+    const filename = `Proposta-YOUON-${safeName}-${solarFlag ? "com-solar" : "sem-solar"}.pptx`;
 
     res.setHeader(
       "Content-Type",

@@ -8,8 +8,8 @@ require("dotenv").config();
 
 async function main() {
   // ====== CONFIG ======
-  const inputPptx = path.join(__dirname, "templates", "atilio-com-solar.pptx"); // local
-  const blobKey = "templates/atilio-com-solar.pptx"; // caminho no Blob (pasta templates)
+  const inputPptx = path.join(__dirname, "templates", "YOUON_Template_Proposta_Comercial_02_ 2.pptx"); // local
+  const blobKey = "templates/YOUON_Template_Proposta_Comercial_02_ 2.pptx"; // caminho no Blob (pasta templates)
   // Se você quiser versionar:
   // const blobKey = `templates/Proposta-YOUON-leona-${Date.now()}.pptx`;
 
