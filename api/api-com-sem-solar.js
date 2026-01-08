@@ -93,11 +93,14 @@ module.exports = async (req, res) => {
 
     const outBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
-    const safeName = String(nomeCliente)
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-");
+    const safeName = String(nomeCliente || "Cliente")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[^\w\s-]/g, "")                        // remove caracteres estranhos
+    .trim()
+    .replace(/\s+/g, "-");                           // espaços -> hífen
 
-    const filename = `Proposta-YOUON-${safeName}-${solarFlag ? "com-solar" : "sem-solar"}.pptx`;
+    const filename = `YOUON_Template_Proposta_Comercial_${safeName}.pptx`;
+
 
     res.setHeader(
       "Content-Type",
