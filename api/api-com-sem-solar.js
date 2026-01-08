@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
     const {
       temSolar,
 
-      nomeCliente = "Cliente",
+      nomeCliente = "",
       inversores = "",
       baterias = "",
       energia_armazenavel = "",
