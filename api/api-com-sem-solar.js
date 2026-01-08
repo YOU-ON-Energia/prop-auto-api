@@ -1,5 +1,6 @@
 const JSZip = require("jszip");
 
+// ================= Helpers =================
 function normalizeSolarFlag(v) {
   if (typeof v === "boolean") return v;
   const raw = String(v || "").trim().toLowerCase();
@@ -17,18 +18,43 @@ function escapeXml(str = "") {
     .replace(/'/g, "&apos;");
 }
 
-// substitui token mesmo quando está dividido em vários <a:t>
+function toNumberSafe(v) {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const s = String(v ?? "").trim().replace(",", ".");
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatUnidades(v) {
+  const n = Math.round(toNumberSafe(v));
+  if (!n) return ""; // vazio/0 => não escreve nada
+  return n === 1 ? "1 unidade" : `${n} unidades`;
+}
+
+function formatKW(v) {
+  const n = toNumberSafe(v);
+  if (!n) return ""; // vazio/0 => não escreve nada
+  const txt = Number.isInteger(n) ? String(n) : String(n).replace(".", ",");
+  return `${txt} kW`;
+}
+
+// ========== Replace robusto (token quebrado em vários <a:t>) ==========
 function replaceTokenAcrossAT(xml, token, value) {
   const reAT = /<a:t[^>]*>([\s\S]*?)<\/a:t>/g;
 
   const nodes = [];
   let m;
   while ((m = reAT.exec(xml)) !== null) {
-    nodes.push({ start: m.index, end: reAT.lastIndex, full: m[0], text: m[1] || "" });
+    nodes.push({
+      start: m.index,
+      end: reAT.lastIndex,
+      full: m[0],
+      text: m[1] || "",
+    });
   }
   if (!nodes.length) return xml;
 
-  const texts = nodes.map(n => n.text);
+  const texts = nodes.map((n) => n.text);
   let joined = texts.join("");
   let idx = joined.indexOf(token);
   if (idx === -1) return xml;
@@ -39,18 +65,27 @@ function replaceTokenAcrossAT(xml, token, value) {
     const endIdx = idx + token.length;
 
     let acc = 0;
-    let startNode = -1, startOffset = 0;
-    let endNode = -1, endOffset = 0;
+    let startNode = -1,
+      startOffset = 0;
+    let endNode = -1,
+      endOffset = 0;
 
     for (let i = 0; i < texts.length; i++) {
       const len = texts[i].length;
-      if (startNode === -1 && acc + len > idx) { startNode = i; startOffset = idx - acc; }
-      if (acc + len >= endIdx) { endNode = i; endOffset = endIdx - acc; break; }
+      if (startNode === -1 && acc + len > idx) {
+        startNode = i;
+        startOffset = idx - acc;
+      }
+      if (acc + len >= endIdx) {
+        endNode = i;
+        endOffset = endIdx - acc;
+        break;
+      }
       acc += len;
     }
 
     const before = texts[startNode].slice(0, startOffset);
-    const after  = texts[endNode].slice(endOffset);
+    const after = texts[endNode].slice(endOffset);
 
     texts[startNode] = before + safeValue + after;
     for (let i = startNode + 1; i <= endNode; i++) texts[i] = "";
@@ -75,12 +110,12 @@ function replaceTokenAcrossAT(xml, token, value) {
 function applyReplacements(xml, replacements) {
   let out = xml;
 
-  // tenta direto
+  // 1) tentativa direta
   for (const [k, v] of Object.entries(replacements)) {
     out = out.split(k).join(escapeXml(String(v ?? "")));
   }
 
-  // garante o “quebrado”
+  // 2) garantia para token quebrado
   for (const [k, v] of Object.entries(replacements)) {
     out = replaceTokenAcrossAT(out, k, v);
   }
@@ -88,7 +123,7 @@ function applyReplacements(xml, replacements) {
   return out;
 }
 
-
+// ================= Handler =================
 module.exports = async (req, res) => {
   try {
     if (req.method !== "POST") {
@@ -113,12 +148,11 @@ module.exports = async (req, res) => {
       unidade = "",
     } = body || {};
 
-    // ===== escolhe template (somente 2) =====
+    // ===== escolhe template =====
     const solarFlag = normalizeSolarFlag(temSolar);
     const templateFile = solarFlag
-    ? "YOUON_Template_Proposta_Comercial_02.pptx" // COM solar
-    : "YOUON_Template_Proposta_Comercial_01.pptx"; // SEM solar
-
+      ? "YOUON_Template_Proposta_Comercial_02.pptx"
+      : "YOUON_Template_Proposta_Comercial_01.pptx";
 
     // ===== URL do Blob (ENV) =====
     const baseUrl = process.env.TEMPLATES_BASE_URL;
@@ -127,9 +161,9 @@ module.exports = async (req, res) => {
       return res.end("ENV TEMPLATES_BASE_URL não configurada na Vercel.");
     }
 
-    const templateUrl =
-    `${baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(templateFile)}`;
-
+    const templateUrl = `${baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(
+      templateFile
+    )}`;
 
     // ===== baixa o template do Blob =====
     const response = await fetch(templateUrl);
@@ -144,49 +178,61 @@ module.exports = async (req, res) => {
 
     const templateBuffer = Buffer.from(await response.arrayBuffer());
 
+    // ===== formatações pedidas =====
+    const inversoresFmt = formatUnidades(inversores);
+    const bateriasFmt = formatUnidades(baterias);
+    const unidadeFmt = formatUnidades(unidade); // placas
+
+    const potenciaFmt = formatKW(potencia);
+    const energiaFmt = formatKW(energia_armazenavel);
+
     // ===== replacements =====
     const replacements = {
       "{NOME_CLIENTE}": String(nomeCliente ?? ""),
       "{ENDERECO}": String(endereco ?? ""),
-      "{DATA_PROPOSTA}": String(dataProposta || new Date().toLocaleDateString("pt-BR")),
-      "{INVERSORES}": String(inversores ?? ""),
-      "{POTENCIA_INVER}": String(potencia ?? ""),
-      "{BATERIAS}": String(baterias ?? ""),
-      "{ENERGIA_ARMAZENAVEL}": String(energia_armazenavel ?? ""),
+      "{DATA_PROPOSTA}": String(
+        dataProposta || new Date().toLocaleDateString("pt-BR")
+      ),
+
+      "{INVERSORES}": inversoresFmt,
+      "{POTENCIA_INVER}": potenciaFmt,
+
+      "{BATERIAS}": bateriasFmt,
+      "{ENERGIA_ARMAZENAVEL}": energiaFmt,
+
       "{GERACAO}": String(geracao ?? ""),
       "{ECONOMIA}": String(economia ?? ""),
-      "{UNIDADE}": String(unidade ?? ""),
+      "{UNIDADE}": unidadeFmt,
     };
 
     const zip = await JSZip.loadAsync(templateBuffer);
 
+    // pega slides + layouts + masters + notes
     const xmlTargets = Object.keys(zip.files).filter((name) => {
-    const isRelevant =
-      name.startsWith("ppt/slides/slide") ||
-      name.startsWith("ppt/slideLayouts/slideLayout") ||
-      name.startsWith("ppt/slideMasters/slideMaster") ||
-      name.startsWith("ppt/notesSlides/notesSlide");
-    return isRelevant && name.endsWith(".xml");
-  });
-
+      const isRelevant =
+        name.startsWith("ppt/slides/slide") ||
+        name.startsWith("ppt/slideLayouts/slideLayout") ||
+        name.startsWith("ppt/slideMasters/slideMaster") ||
+        name.startsWith("ppt/notesSlides/notesSlide");
+      return isRelevant && name.endsWith(".xml");
+    });
 
     for (const fileName of xmlTargets) {
-    const xml = await zip.files[fileName].async("string");
-    const updated = applyReplacements(xml, replacements);
-    zip.file(fileName, updated);
-  } 
-
+      const xml = await zip.files[fileName].async("string");
+      const updated = applyReplacements(xml, replacements);
+      zip.file(fileName, updated);
+    }
 
     const outBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
     const safeName = String(nomeCliente || "Cliente")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/[^\w\s-]/g, "")                        // remove caracteres estranhos
-    .trim()
-    .replace(/\s+/g, "-");                           // espaços -> hífen
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
 
     const filename = `YOUON_Template_Proposta_Comercial_${safeName}.pptx`;
-
 
     res.setHeader(
       "Content-Type",
