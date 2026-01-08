@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
 
     // ===== replacements =====
     const replacements = {
-      "{NOME_CLIENTE}": String(nomeCliente ?? "Cliente"),
+      "{NOME_CLIENTE}": String(nomeCliente ?? ""),
       "{ENDERECO}": String(endereco ?? ""),
       "{DATA_PROPOSTA}": String(dataProposta || new Date().toLocaleDateString("pt-BR")),
       "{INVERSORES}": String(inversores ?? ""),
@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
 
     const outBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
-    const safeName = String(nomeCliente || "Cliente")
+    const safeName = String(nomeCliente)
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "-");
 
