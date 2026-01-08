@@ -151,8 +151,8 @@ module.exports = async (req, res) => {
     // ===== escolhe template =====
     const solarFlag = normalizeSolarFlag(temSolar);
     const templateFile = solarFlag
-      ? "YOUON_Template_Proposta_Comercial_02.pptx"
-      : "YOUON_Template_Proposta_Comercial_01.pptx";
+      ? "YOUON_Template_Proposta_Orientativa_02.pptx"
+      : "YOUON_Template_Proposta_Orientativa_01.pptx";
 
     // ===== URL do Blob (ENV) =====
     const baseUrl = process.env.TEMPLATES_BASE_URL;
@@ -232,7 +232,7 @@ module.exports = async (req, res) => {
       .trim()
       .replace(/\s+/g, "-");
 
-    const filename = `YOUON_Template_Proposta_Comercial_${safeName}.pptx`;
+    const filename = `YOUON_Template_Proposta_Orientativa_${safeName}.pptx`;
 
     res.setHeader(
       "Content-Type",
