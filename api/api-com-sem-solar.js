@@ -8,6 +8,87 @@ function normalizeSolarFlag(v) {
   return false;
 }
 
+function escapeXml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// substitui token mesmo quando está dividido em vários <a:t>
+function replaceTokenAcrossAT(xml, token, value) {
+  const reAT = /<a:t[^>]*>([\s\S]*?)<\/a:t>/g;
+
+  const nodes = [];
+  let m;
+  while ((m = reAT.exec(xml)) !== null) {
+    nodes.push({ start: m.index, end: reAT.lastIndex, full: m[0], text: m[1] || "" });
+  }
+  if (!nodes.length) return xml;
+
+  const texts = nodes.map(n => n.text);
+  let joined = texts.join("");
+  let idx = joined.indexOf(token);
+  if (idx === -1) return xml;
+
+  const safeValue = escapeXml(String(value ?? ""));
+
+  while (idx !== -1) {
+    const endIdx = idx + token.length;
+
+    let acc = 0;
+    let startNode = -1, startOffset = 0;
+    let endNode = -1, endOffset = 0;
+
+    for (let i = 0; i < texts.length; i++) {
+      const len = texts[i].length;
+      if (startNode === -1 && acc + len > idx) { startNode = i; startOffset = idx - acc; }
+      if (acc + len >= endIdx) { endNode = i; endOffset = endIdx - acc; break; }
+      acc += len;
+    }
+
+    const before = texts[startNode].slice(0, startOffset);
+    const after  = texts[endNode].slice(endOffset);
+
+    texts[startNode] = before + safeValue + after;
+    for (let i = startNode + 1; i <= endNode; i++) texts[i] = "";
+
+    joined = texts.join("");
+    idx = joined.indexOf(token, idx + safeValue.length);
+  }
+
+  let out = "";
+  let last = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    out += xml.slice(last, nodes[i].start);
+    const openTag = nodes[i].full.match(/^<a:t[^>]*>/)?.[0] || "<a:t>";
+    out += `${openTag}${texts[i] || ""}</a:t>`;
+    last = nodes[i].end;
+  }
+  out += xml.slice(last);
+
+  return out;
+}
+
+function applyReplacements(xml, replacements) {
+  let out = xml;
+
+  // tenta direto
+  for (const [k, v] of Object.entries(replacements)) {
+    out = out.split(k).join(escapeXml(String(v ?? "")));
+  }
+
+  // garante o “quebrado”
+  for (const [k, v] of Object.entries(replacements)) {
+    out = replaceTokenAcrossAT(out, k, v);
+  }
+
+  return out;
+}
+
+
 module.exports = async (req, res) => {
   try {
     if (req.method !== "POST") {
@@ -90,12 +171,11 @@ module.exports = async (req, res) => {
 
 
     for (const fileName of xmlTargets) {
-      let xml = await zip.files[fileName].async("string");
-      for (const [key, value] of Object.entries(replacements)) {
-        xml = xml.split(key).join(value);
-      }
-      zip.file(fileName, xml);
-    }
+    const xml = await zip.files[fileName].async("string");
+    const updated = applyReplacements(xml, replacements);
+    zip.file(fileName, updated);
+  } 
+
 
     const outBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
