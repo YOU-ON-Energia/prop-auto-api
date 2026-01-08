@@ -35,8 +35,8 @@ module.exports = async (req, res) => {
     // ===== escolhe template (somente 2) =====
     const solarFlag = normalizeSolarFlag(temSolar);
     const templateFile = solarFlag
-    ? "YOUON_Template_Proposta_Comercial_02_ 2.pptx" // COM solar
-    : "YOUON_Template_Proposta_Comercial_01_ 1.pptx"; // SEM solar
+    ? "YOUON_Template_Proposta_Comercial_02.pptx" // COM solar
+    : "YOUON_Template_Proposta_Comercial_01.pptx"; // SEM solar
 
 
     // ===== URL do Blob (ENV) =====
