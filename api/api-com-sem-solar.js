@@ -79,11 +79,17 @@ module.exports = async (req, res) => {
 
     const zip = await JSZip.loadAsync(templateBuffer);
 
-    const slideFiles = Object.keys(zip.files).filter(
-      (name) => name.startsWith("ppt/slides/slide") && name.endsWith(".xml")
-    );
+    const xmlTargets = Object.keys(zip.files).filter((name) => {
+    const isRelevant =
+      name.startsWith("ppt/slides/slide") ||
+      name.startsWith("ppt/slideLayouts/slideLayout") ||
+      name.startsWith("ppt/slideMasters/slideMaster") ||
+      name.startsWith("ppt/notesSlides/notesSlide");
+    return isRelevant && name.endsWith(".xml");
+  });
 
-    for (const fileName of slideFiles) {
+
+    for (const fileName of xmlTargets) {
       let xml = await zip.files[fileName].async("string");
       for (const [key, value] of Object.entries(replacements)) {
         xml = xml.split(key).join(value);
