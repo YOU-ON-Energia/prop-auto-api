@@ -31,11 +31,19 @@ function formatUnidades(v) {
   return n === 1 ? "1 unidade" : `${n} unidades`;
 }
 
+
 function formatKW(v) {
   const n = toNumberSafe(v);
   if (!n) return ""; // vazio/0 => não escreve nada
   const txt = Number.isInteger(n) ? String(n) : String(n).replace(".", ",");
   return `${txt} kW`;
+}
+
+function formatInvestimento(v) {
+  const n = toNumberSafe(v);
+  if (!n) return ""; // vazio/0 => não escreve nada
+  const txt = n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `R$ ${txt}`;
 }
 
 // ========== Replace robusto (token quebrado em vários <a:t>) ==========
@@ -146,6 +154,7 @@ module.exports = async (req, res) => {
       geracao = "",
       economia = "",
       unidade = "",
+      investimento = "",
     } = body || {};
 
     // ===== escolhe template =====
@@ -185,6 +194,7 @@ module.exports = async (req, res) => {
 
     const potenciaFmt = formatKW(potencia);
     const energiaFmt = formatKW(energia_armazenavel);
+    const investimentoFmt = formatInvestimento(investimento);
 
     // ===== replacements =====
     const replacements = {
@@ -203,6 +213,7 @@ module.exports = async (req, res) => {
       "{GERACAO}": String(geracao ?? ""),
       "{ECONOMIA}": String(economia ?? ""),
       "{UNIDADE}": unidadeFmt,
+      "{INVESTIMENTO}": investimentoFmt,
     };
 
     const zip = await JSZip.loadAsync(templateBuffer);
