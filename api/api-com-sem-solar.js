@@ -27,8 +27,10 @@ function toNumberSafe(v) {
 
 function formatUnidades(v) {
   const n = Math.round(toNumberSafe(v));
-  if (!n) return ""; // vazio/0 => não escreve nada
-  return n === 1 ? "1 unidade" : `${n} unidades`;
+  if (!n) return ""; 
+
+  const nFmt = n.toLocaleString("pt-BR"); 
+  return n === 1 ? `${nFmt} unidade` : `${nFmt} unidades`;
 }
 
 
