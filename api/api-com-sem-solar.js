@@ -202,7 +202,7 @@ module.exports = async (req, res) => {
     const unidadeFmt = formatUnidades(unidade); // placas
 
     const potenciaFmt = formatKW(potencia);
-    const energiaFmt = formatKW(energia_armazenavel);
+    const energiaFmt = formatKW2(energia_armazenavel);
     const energiaFmt2 = formatKW2(energia_armazenavel_2);
     const investimentoFmt = formatInvestimento(investimento);
 
