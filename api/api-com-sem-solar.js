@@ -164,6 +164,7 @@ module.exports = async (req, res) => {
       economia = "",
       unidade = "",
       investimento = "",
+      id = "",
     } = body || {};
 
     // ===== escolhe template =====
@@ -205,6 +206,7 @@ module.exports = async (req, res) => {
     const energiaFmt = formatKW2(energia_armazenavel);
     const energiaFmt2 = formatKW2(energia_armazenavel_2);
     const investimentoFmt = formatInvestimento(investimento);
+    
 
     // ===== replacements =====
     const replacements = {
@@ -224,6 +226,7 @@ module.exports = async (req, res) => {
       "{ECONOMIA}": String(economia ?? ""),
       "{UNIDADE}": unidadeFmt,
       "{INVESTIMENTO}": investimentoFmt,
+      "{ID}": id,
     };
 
     const zip = await JSZip.loadAsync(templateBuffer);
