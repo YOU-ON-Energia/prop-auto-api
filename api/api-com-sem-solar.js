@@ -41,6 +41,13 @@ function formatKW(v) {
   return `${txt} kW`;
 }
 
+function formatKW2(v) {
+  const n = toNumberSafe(v);
+  if (!n) return ""; // vazio/0 => não escreve nada
+  const txt = Number.isInteger(n) ? String(n) : String(n).replace(".", ",");
+  return `${txt} kWh`;
+}
+
 function formatInvestimento(v) {
   const n = toNumberSafe(v);
   if (!n) return ""; // vazio/0 => não escreve nada
@@ -145,11 +152,11 @@ module.exports = async (req, res) => {
 
     const {
       temSolar,
-
       nomeCliente = "",
       inversores = "",
       baterias = "",
       energia_armazenavel = "",
+      energia_armazenavel_2 = "",
       potencia = "",
       endereco = "",
       dataProposta,
@@ -196,6 +203,7 @@ module.exports = async (req, res) => {
 
     const potenciaFmt = formatKW(potencia);
     const energiaFmt = formatKW(energia_armazenavel);
+    const energiaFmt2 = formatKW2(energia_armazenavel_2);
     const investimentoFmt = formatInvestimento(investimento);
 
     // ===== replacements =====
@@ -211,7 +219,7 @@ module.exports = async (req, res) => {
 
       "{BATERIAS}": bateriasFmt,
       "{ENERGIA_ARMAZENAVEL}": energiaFmt,
-
+      "{ENERGIA_ARMAZENAVEL_2}": energiaFmt2,
       "{GERACAO}": String(geracao ?? ""),
       "{ECONOMIA}": String(economia ?? ""),
       "{UNIDADE}": unidadeFmt,
